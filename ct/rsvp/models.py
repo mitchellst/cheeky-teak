@@ -22,6 +22,7 @@ class EventGuest(models.Model):
 	plusOne = models.IntegerField(default=0)
 	orderer = models.IntegerField(default=0)
 
+
 	def clean(self):
 		"""
 		Only custom cleaning we need to do is make sure that prefixes have
@@ -31,6 +32,7 @@ class EventGuest(models.Model):
 		self.pfx.strip()
 		if self.pfx.lower() in {'mr', 'mrs', 'ms', 'dr', 'mdm'}: #Zoom!Sets are speedy!
 			self.pfx += '.'
+
 
 	@classmethod
 	def nextFreeInvitation(cls, ev):
@@ -42,6 +44,7 @@ class EventGuest(models.Model):
 		"""
 		guests = cls.objects.filter(event=ev)
 		return 1 + max(guests, default=0, key=lambda guest: guest.invitation)
+
 
 	class Meta:
 		ordering = ('invitation', 'orderer')

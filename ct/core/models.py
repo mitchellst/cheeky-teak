@@ -28,7 +28,7 @@ class Profile(models.Model):
 		user_type options:
 		0 = single event user, login forwards straight to event dashboard.
 		1 = event planner, read access to multiple events.
-		3 = CheekyTeak staff member, write access to all events.
+		2 = CheekyTeak staff member, write access to all events.
 	"""
 	user = models.OneToOneField(User, primary_key=True, related_name='ctprofile')
 	user_type = models.SmallIntegerField(default=0)

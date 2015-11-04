@@ -1,5 +1,4 @@
-from django.test import TestCase
-from django.http import HttpRequest
+from django.test import TestCase, Client
 from django.contrib.auth.models import User
 import os
 import datetime
@@ -14,20 +13,20 @@ class TestFileUploadOnFile1(TestCase):
 	def setUp(self):
 		self.ev = Event(name='Test Event', event_date=datetime.date.today())
 		self.ev.save()
-		self.request = HttpRequest()
-		self.request.method = 'POST'
-		self.request.user = User(is_superuser=True) #Get past that user test decorator.
-		self.request.POST['event'] = str(self.ev.pk)
-		self.request.FILES = {'csvfile': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'testfiles/test1.csv')}
-		self.response = loadEventWithGuests(self.request)
+		User.objects.create_superuser('tester', 'test@testing.com', 'testme')
+		self.c = Client()
+		self.c.login(username='tester', password='testme')
+		with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'testfiles/test1.csv')) as f:
+			self.response = self.c.post('/uploadGuests/', {'event': self.ev.pk, 'csvfile': f})
+
 
 	def tearDown(self):
 		EventGuest.objects.filter(event=self.ev).delete()
 		self.ev.delete()
 
 	def testFileUploadNoError(self):
-		self.assertEqual(self.response.status_code, 200)	
-	
+		self.assertEqual(self.response.status_code, 200)
+
 	def testFileUploadMakesRightNumberOfGuests(self):
 		qs = EventGuest.objects.filter(event=self.ev)
 		self.assertEqual(qs.count(), 8)
@@ -55,19 +54,18 @@ class TestFileUploadOnFile2(TestCase):
 	def setUp(self):
 		self.ev = Event(name='Test Event', event_date=datetime.date.today())
 		self.ev.save()
-		self.request = HttpRequest()
-		self.request.method = 'POST'
-		self.request.user = User(is_superuser=True)
-		self.request.POST['event'] = str(self.ev.pk)
-		self.request.FILES = {'csvfile': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'testfiles/test2.csv')}
-		self.response = loadEventWithGuests(self.request)
+		User.objects.create_superuser('tester', 'test@testing.com', 'testme')
+		self.c = Client()
+		self.c.login(username='tester', password='testme')
+		with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'testfiles/test1.csv')) as f:
+			self.response = self.c.post('/uploadGuests/', {'event': self.ev.pk, 'csvfile': f})
 
 	def tearDown(self):
 		self.ev.delete()
 
 	def testFileUploadNoError(self):
-		self.assertEqual(self.response.status_code, 200)	
-	
+		self.assertEqual(self.response.status_code, 200)
+
 	def testFileUploadMakesRightNumberOfGuests(self):
 		qs = EventGuest.objects.filter(event=self.ev)
 		self.assertEqual(qs.count(), 8)

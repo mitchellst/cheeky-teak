@@ -1,0 +1,87 @@
+{% load static from staticfiles%}<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Upload a Guest List File</title>
+  <link rel="stylesheet" href="{% static 'foundation.min.css' %}"
+</head>
+<body style="padding: 1em;">
+	<h1>Please Upload a Guest List File</h1>
+  <h2>File Specs</h2>
+	<p>It should be an ordinary <code>.csv</code> file with this kind of structure:</p>
+  <table>
+    <thead>
+      <tr>
+        <td>Prefix</td>
+        <td>First Name</td>
+        <td>Last Name</td>
+        <td>Plus Ones</td>
+        <td>Same Group as Previous Row</td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Mr.</td>
+        <td>Mitchell</td>
+        <td>Stoutin</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>Mrs.</td>
+        <td>Jaqueline</td>
+        <td>Stoutin</td>
+        <td></td>
+        <td>X</td>
+      </tr>
+      <tr>
+        <td>Mr.</td>
+        <td>Tim</td>
+        <td>Blair</td>
+        <td>1</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>Dr.</td>
+        <td>Marvin</td>
+        <td>Kim</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>Mrs.</td>
+        <td>Cynthia</td>
+        <td>Kim</td>
+        <td></td>
+        <td>X</td>
+      </tr>
+      <tr>
+        <td>Mr.</td>
+        <td>Brian</td>
+        <td>Kim</td>
+        <td></td>
+        <td>X</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>A few documentation Notes:</p>
+  <ul>
+    <li>The first three lines should be self explanatory. Prefix and Last Name can be left blank.</li>
+    <li>Plus Ones is the number of unnamed guest this person will be allowed to register. Leave it blank for 0, or make it a number.</li>
+    <li>The final row denotes groups. Above, my wife and I will come up on the same invitation, as will the families, but the single people
+      fly solo. Leave the cell blank for a unique invitation, put something there to continue from the previous row.</li>
+  </ul>
+  <form action="" method="POST" enctype="multipart/form-data">{% csrf_token %}
+    <div class="row">
+      <label>Event </label>
+      <select name="event">
+        {% for ev in events %}<option value="{{ ev.pk }}">{{ ev.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="row">
+      <label>Guest List File </label>
+      <input type="file" name="csvfile" />
+    </div>
+    <button>Submit</button>
+  </form>
+</html>
