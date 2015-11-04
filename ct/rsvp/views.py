@@ -32,16 +32,16 @@ def loadEventWithGuests(request):
 		#Get stuff we'll need.
 		ev = get_object_or_404(Event, pk=int(request.POST['event']))
 		guests = EventGuest.objects.filter(event=ev)
-		NextInvite = 1 + max(guests, default=0, key=lambda guest: guest.invitation)
+		NextInvite = EventGuest.nextFreeInvitation(ev)
 		falseExtends = {'n', 'f', 'no', 'false', ''}
-		
+
 		#Parse the file.
 		if request.FILES['csvfile']:
 			with open(request.FILES['csvfile']) as csvFile:
 				reader = csv.DictReader(csvFile, fieldnames=('pfx', 'first', 'last', 'plusOne', 'extends'))
 				for index, row in enumerate(reader):
 					#CSV headers aren't guests.
-					if index==0 and 'first' in row['first'].lower() and 'last' in row['last'].lower(): 
+					if index==0 and 'first' in row['first'].lower() and 'last' in row['last'].lower():
 						pass
 					#Everybody else is.
 					else:
@@ -51,15 +51,11 @@ def loadEventWithGuests(request):
 							plusOne = int(row['plusOne'])
 						except ValueError:
 							plusOne = 0
-						guest = EventGuest(event=ev, status=0, invitation=NextInvite, 
+						guest = EventGuest(event=ev, status=0, invitation=NextInvite,
 							pfx=row['pfx'], first=row['first'], last=row['last'],
 							plusOne=plusOne)
 						guest.clean() # Does a bit of custom validation, see model.
 						guest.save()
 			return render(request, 'thanks.html')
 		else:
-			return render(request, 'fileParseError.html'), 500	
-
-
-
-	
+			return render(request, 'fileParseError.html'), 500
