@@ -88,3 +88,61 @@ class TestFileUploadOnFile2(TestCase):
 		self.assertEqual(EventGuest.objects.filter(event=self.ev, pfx='Mrs').count(), 0)
 		self.assertEqual(EventGuest.objects.filter(event=self.ev, pfx='Mrs.').count(), 2)
 		self.assertEqual(EventGuest.objects.filter(event=self.ev, pfx='Miss').count(), 1)
+
+class TestEventGuestModel(TestCase):
+	
+	def test_nextFreeInvitation_method_fails_gracefully_on_None(self):
+		a = EventGuest.nextFreeInvitation(None) #exception would error out test.
+		self.assertIsInstance(a, int)
+		
+	def test_names_and_pfxs_stripped_on_clean(self):
+		a = EventGuest(pfx='mr. ', first='mitchell ', last=' stoutin')
+		a.clean()
+		self.assertEqual(a.pfx, 'mr.')
+		self.assertEqual(a.first, 'mitchell')
+		self.assertEqual(a.last, 'stoutin')
+	
+	def test_appropriate_prefixes_receive_dot_on_clean(self):
+		for x in ['mr', 'Mrs', 'Ms', 'Dr', 'mdm']:
+			a = EventGuest(pfx=x, first='FirstName', last='Last Name')
+			a.clean()
+			self.assertEqual(a.pfx[-1], '.')
+		a.pfx = 'Miss' #make sure it doesn't dot everything.
+		a.clean()
+		self.assertNotEqual(a.pfx[-1], '.')
+	
+	def test_nextFreeInvite_incriments(self):
+		ev = Event(name='Test Event', event_date=datetime.date.today())
+		ev.save()
+		defaults = {'event': ev, 'first': 'FirstName', 'last': 'Last Name'}
+		latest = 0
+		for x in range(10):
+			guest = EventGuest(invitation=EventGuest.nextFreeInvitation(ev), **defaults)
+			guest.save()
+			self.assertTrue(guest.invitation > latest)
+			latest = guest.invitation
+		
+
+
+class TestSerializersFromPrimitives(TestCase):
+	
+	def can_save_from_public_fields(self):
+		pass
+		
+	def test_names_and_pfxs_stripped_on_save(self):
+		pass
+	
+
+
+class TestSerializersFromPythonObjects(TestCase):
+	
+	def test_only_public_fields_from_guest_public(self):
+		pass
+	
+	def test_only_public_fields_from_invitation_public(self):
+		pass
+	
+	def test_event_info_only_public(self):
+		pass
+	
+	

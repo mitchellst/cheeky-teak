@@ -29,7 +29,9 @@ class EventGuest(models.Model):
 		dots at the end if they need them. (E.g. 'Mr' becomes 'Mr.' but 'Miss'
 		doesn't become 'Miss.') Framework handles the rest.
 		"""
-		self.pfx.strip()
+		self.pfx = self.pfx.strip()
+		self.first = self.first.strip()
+		self.last = self.last.strip()
 		if self.pfx.lower() in {'mr', 'mrs', 'ms', 'dr', 'mdm'}: #Zoom!Sets are speedy!
 			self.pfx += '.'
 
@@ -43,7 +45,10 @@ class EventGuest(models.Model):
 		of the next "empty" group.
 		"""
 		guests = cls.objects.filter(event=ev)
-		return 1 + max(guests, default=0, key=lambda guest: guest.invitation)
+		topInvite = max(guests, default=0, key=lambda guest: guest.invitation)
+		if isinstance(topInvite, cls):
+			return 1 + topInvite.invitation
+		return 1
 
 
 	class Meta:
