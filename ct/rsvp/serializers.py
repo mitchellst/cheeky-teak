@@ -3,7 +3,7 @@ from ct.rsvp.models import EventGuest
 from ct.core.models import Event
 from ct.rsvp.exceptions import MixedInvitationException
 
-PUBLIC_FIELDS = ('id', 'event','invitation', 'pfx', 'first', 'last', 'plusOne', 'orderer')
+PUBLIC_FIELDS = ('id', 'event', 'invitation', 'pfx', 'first', 'last', 'plusOne', 'orderer')
 
 class EventDisplayInfoSerializer(serializers.ModelSerializer):
 	"""
@@ -59,6 +59,8 @@ class InvitationListSerializer(serializers.ListSerializer):
 	An exception will be raised unless all the guests share the same invitation
 	or lack an assigned invitation number. (In which case, they'll all be given 
 	the same one.)
+	
+	At present, this is practically pseudo-code. It doesn't work.
 	"""
 	
 	def validate_same_invitation(self, guestObjectsList, guestDictList=None):
