@@ -29,11 +29,14 @@ class EventGuest(models.Model):
 		dots at the end if they need them. (E.g. 'Mr' becomes 'Mr.' but 'Miss'
 		doesn't become 'Miss.') Framework handles the rest.
 		"""
-		self.pfx = self.pfx.strip()
+		if self.pfx is not None:
+			self.pfx = self.pfx.strip()
+			if self.pfx.lower() in {'mr', 'mrs', 'ms', 'dr', 'mdm'}: #Zoom!Sets are speedy!
+				self.pfx += '.'
+		if self.last is not None: self.last = self.last.strip()
 		self.first = self.first.strip()
-		self.last = self.last.strip()
-		if self.pfx.lower() in {'mr', 'mrs', 'ms', 'dr', 'mdm'}: #Zoom!Sets are speedy!
-			self.pfx += '.'
+		
+		
 
 
 	@classmethod

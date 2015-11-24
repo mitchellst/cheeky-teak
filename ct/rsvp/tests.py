@@ -7,6 +7,7 @@ from ct.core.models import Event
 
 from .views import loadEventWithGuests
 from .models import EventGuest
+from .serializers import GuestFullSerializer, GuestPublicSerializer
 
 class TestFileUploadOnFile1(TestCase):
 
@@ -89,6 +90,7 @@ class TestFileUploadOnFile2(TestCase):
 		self.assertEqual(EventGuest.objects.filter(event=self.ev, pfx='Mrs.').count(), 2)
 		self.assertEqual(EventGuest.objects.filter(event=self.ev, pfx='Miss').count(), 1)
 
+
 class TestEventGuestModel(TestCase):
 	
 	def test_nextFreeInvitation_method_fails_gracefully_on_None(self):
@@ -101,6 +103,12 @@ class TestEventGuestModel(TestCase):
 		self.assertEqual(a.pfx, 'mr.')
 		self.assertEqual(a.first, 'mitchell')
 		self.assertEqual(a.last, 'stoutin')
+	
+	def test_cleaner_handles_nonetype(self):
+		a = EventGuest(pfx=None, first='mitchell ')
+		a.clean()
+		self.assertEqual(a.pfx, None)
+		
 	
 	def test_appropriate_prefixes_receive_dot_on_clean(self):
 		for x in ['mr', 'Mrs', 'Ms', 'Dr', 'mdm']:
@@ -124,17 +132,58 @@ class TestEventGuestModel(TestCase):
 		
 
 
-class TestSerializersFromPrimitives(TestCase):
+class TestGuestSerializersFromPrimitives(TestCase):
 	
-	def can_save_from_public_fields(self):
-		pass
+	def setUp(self):
+		self.ev = Event(name='Test Event', event_date=datetime.date.today())
+		self.ev.save()
+	
+	def test_can_save_from_public_fields(self):
+		a = {'invitation': 4, 'pfx': None, 'first': '  mitchell', 'last': 'stoutin ',
+		'plusOne': 1, 'orderer': 0, 'event': self.ev.pk,}
+		b = GuestPublicSerializer(data=a)
+		b.is_valid()
+		b.save() #should throw exception invalid at model level.
+	
+	def test_will_update_from_public_fields(self):
+		a = {'invitation': 4, 'pfx': 'Mr', 'first': '  mitchell', 'last': 'stoutin ',
+		'plusOne': 1, 'orderer': 0}
+		b = EventGuest(event=self.ev, **a)
+		b.save()
+		a['first'] = 'Daylen'
+		a['event'] = self.ev.pk
+		c = GuestPublicSerializer(b, data=a)
+		c.is_valid()
+		c.save()
+		self.assertEqual(b.first, 'Daylen')
 		
 	def test_names_and_pfxs_stripped_on_save(self):
-		pass
+		a = {'invitation': 4, 'pfx': 'Mr', 'first': '  mitchell', 'last': 'stoutin ',
+		'plusOne': 1, 'orderer': 0, 'event': self.ev.pk, 'status':1}
+		b = GuestFullSerializer(data=a)
+		b.is_valid()
+		instance = b.save()
+		self.assertEqual(instance.pfx, 'Mr.')
+		self.assertEqual(instance.first, 'mitchell')
+		self.assertEqual(instance.last, 'stoutin')
+		rightnum = instance.pk
+		
+		#If called with an ID, serializer.save() will call separate method,
+		# update(). Test that update also cleans names.
+		c = {'invitation': 4, 'pfx': 'Mr', 'first': '  mitchell', 'last': 'stoutin ',
+		'plusOne': 1, 'orderer': 0, 'event': self.ev.pk, 'status':1, 'id': instance.pk}
+		d = GuestFullSerializer(instance, data=c)
+		d.is_valid()
+		instance = d.save()
+		self.assertEqual(instance.pfx, 'Mr.')
+		self.assertEqual(instance.first, 'mitchell')
+		self.assertEqual(instance.last, 'stoutin')
+		#make sure this test didn't just create a second EventGuest.
+		self.assertEqual(instance.pk, rightnum)
 	
 
 
-class TestSerializersFromPythonObjects(TestCase):
+class TestGuestSerializersFromPythonObjects(TestCase):
 	
 	def test_only_public_fields_from_guest_public(self):
 		pass
@@ -145,4 +194,8 @@ class TestSerializersFromPythonObjects(TestCase):
 	def test_event_info_only_public(self):
 		pass
 	
+class TestInvitationListSerializer(TestCase):
 	
+	def setUp(self):
+		self.ev = Event(name='Test Event', event_date=datetime.date.today())
+		self.ev.save()
