@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from ct.rsvp.models import EventGuest
 from ct.core.models import Event
-from ct.rsvp.exceptions import MixedInvitationException
+from ct.rsvp.exceptions import MixedInvitationError, NoEventError
 
 PUBLIC_FIELDS = ('id', 'event', 'invitation', 'pfx', 'first', 'last', 'plusOne', 'orderer')
 
@@ -70,11 +70,11 @@ class InvitationListSerializer(serializers.ListSerializer):
 		not an "invite" one.
 		"""
 		if len({guest.invitation for guest in guestObjectsList}) > 1:
-			raise MixedInvitationException("Not all the guests serialized share same invitation.")
+			raise MixedInvitationError("Not all the guests serialized share same invitation.")
 		if guestDictList is not None:
 			if not (all('invitation' not in [item.keys() for item in guestDictList]) or
 					len({item['invitation'] for item in guestDictList}) > 1):
-				raise MixedInvitationException	
+				raise MixedInvitationError	
 		
 	
 	def create(self, validated_data):
@@ -111,12 +111,89 @@ class InvitationFullSerializer(GuestFullSerializer):
 	Serializer for guests who should all share the same invitation (group).
 	To serialize an arbitrary array of guests, use GuestFullSerializer.
 	"""
+	@classmethod
+	def many_init(cls, *args, **kwargs):
+		"""
+		Here's where we'll validate that all the invitations are the same,
+		or assign them.
+		
+		When passing many=True with a data kwarg, we need to make sure the representations
+		are not orphaned from their event. Representations must either each have a dict key
+		"event" which corresponds to the integer primary key, or you must pass the event as
+		a keyword argument to the serializer along with many=True.
+		
+		"""
+		if 'data' in kwargs:
+			
+			#validate data is a list.
+			data = kwargs.pop('data')
+			assert type(data) == list, (
+				'''Invitation Serializer with many=True and non-empty data
+				expects a list in the data representation, not a dict or other
+				type.'''
+			)
+			eventNumber = kwargs.pop('event', None)
+			if eventNumber is None:
+				try:
+					eventNumber = data[0]['event']
+				except KeyError:
+					raise NoEventError(
+						'''No event information associated with this list of guests.
+						Try passing `event` keyword arg to the serializer or guest representations
+						with event attributes'''
+						)
+			
+			#build invitations list to analyze
+			invitations = [obj.pop('invitation', None) for obj in data]
+			for inx, val in enumerate(invitations):
+				if type(val) == str: #some data cleaning for types.
+					val = val.strip()
+					if val == '':
+						invitations[inx] = None
+					else:
+						try:
+							intval = int(val)
+							invitations[inx] = intval
+						except ValueError:
+							pass
+					
+			integerInvitations = [x for x in invitations if type(x)==int]
+			
+			if integerInvitations: #isn't epmty
+				allsame = map(lambda x: x==integerInvitations[0], integerInvitations)
+				if not all(allsame): 
+					raise MixedInvitationError('All Numbered invitations must be same.')
+				numberToAssign = integerInvitations[0]
+			
+			else: #usually means invitations == [None,]*len(data):
+				numberToAssign = EventGuest.nextFreeInvitation(eventNumber)
+			for representation in data:
+				representation['invitation'] = numberToAssign
+			
+			# put our work back in the keyword args dict, which we'll use below.
+			kwargs['data'] = data
+			
+		else:
+			instance_queryset = [args[0],] if isinstance(args[0], EventGuest) else args[0] #per the serializer API.
+			allsame = map(lambda x: x.invitation==instance_queryset[0].invitation, instance_queryset)
+			if not all(allsame):
+				raise MixedInvitationError
+			
+		# finally make the serializer, knowing the above is done.
+		child = cls(*args, **kwargs)
+		list_kwargs = {'child': child,}
+		list_kwargs.update({
+			key: value for key, value in kwargs.items()
+			if key in serializers.LIST_SERIALIZER_KWARGS
+		})
+		return InvitationListSerializer(*args, **list_kwargs)
+		
 	
-	class Meta(GuestFullSerializer.Meta):
-		list_serializer_class = InvitationListSerializer
+	class Meta:
+		model = EventGuest
 
 
-class InvitationPublicSerializer(GuestFullSerializer):
+class InvitationPublicSerializer(InvitationFullSerializer):
 	"""
 	Exact copy of InvitationFullSerializer, except that it does not leak the attending
 	status of guests. To be passed to public-facing RSVP apps.

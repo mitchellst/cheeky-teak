@@ -7,8 +7,9 @@ from ct.core.models import Event
 
 from .views import loadEventWithGuests
 from .models import EventGuest
-from .serializers import GuestFullSerializer, GuestPublicSerializer, InvitationPublicSerializer, InvitationFullSerializer
-from .exceptions import MixedInvitationException
+from .serializers import (GuestFullSerializer, GuestPublicSerializer, 
+	InvitationPublicSerializer, InvitationFullSerializer, InvitationListSerializer)
+from .exceptions import MixedInvitationError, NoEventError
 
 class TestFileUploadOnFile1(TestCase):
 
@@ -94,9 +95,9 @@ class TestFileUploadOnFile2(TestCase):
 
 class TestEventGuestModel(TestCase):
 	
-	def test_nextFreeInvitation_method_fails_gracefully_on_None(self):
-		a = EventGuest.nextFreeInvitation(None) #exception would error out test.
-		self.assertIsInstance(a, int)
+	def test_nextFreeInvitation_method_raises_exception_on_noEvent(self):
+		with self.assertRaises(NoEventError):
+			EventGuest.nextFreeInvitation(None)
 		
 	def test_names_and_pfxs_stripped_on_clean(self):
 		a = EventGuest(pfx='mr. ', first='mitchell ', last=' stoutin')
@@ -224,7 +225,14 @@ class TestInvitationListSerializer(TestCase):
 		self.c = {'first': 'Nonexistent Baby', 'last': 'Stoutin', 'orderer': 3,
 			'status': 2}
 		
+	def test_invitation_serializer_makes_invitationList(self):
+		a = InvitationFullSerializer(data=[self.a, self.b, self.c], event=self.ev, many=True)
 		
+		#Note that you can pass event by object, as above, or by primary key:
+		b = InvitationPublicSerializer(data=[self.a, self.b, self.c], event=self.ev.pk, many=True)
+		self.assertIsInstance(a, InvitationListSerializer)
+		self.assertIsInstance(b, InvitationListSerializer)
+	
 	#currently failing.
 	def test_save_from_prim_puts_all_on_same_invite(self):
 		abc = [self.a, self.b, self.c]

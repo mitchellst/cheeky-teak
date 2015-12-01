@@ -1,5 +1,6 @@
 from django.db import models
 from ct.core.models import Event as ctEvent
+from .exceptions import NoEventError
 
 class EventGuest(models.Model):
 	"""
@@ -44,10 +45,17 @@ class EventGuest(models.Model):
 		"""
 		Invitations are groups of guests, as in a foreign key relationship, except
 		an actual foreign key would be redundant and wasteful in this case. This
-		method accepts an instance of ct.core.models.Event and returns the number
-		of the next "empty" group.
+		method accepts an instance of ct.core.models.Event (or one's pk) and returns 
+		the number of the next "empty" group.
 		"""
-		guests = cls.objects.filter(event=ev)
+		if isinstance(ev, ctEvent):
+			eventInstance = ev
+		else:
+			try:
+				eventInstance = ctEvent.objects.get(pk=ev)
+			except:
+				raise NoEventError
+		guests = cls.objects.filter(event=eventInstance)
 		topInvite = max(guests, default=0, key=lambda guest: guest.invitation)
 		if isinstance(topInvite, cls):
 			return 1 + topInvite.invitation
